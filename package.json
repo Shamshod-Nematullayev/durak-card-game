@@ -1,0 +1,13 @@
+{
+  "name": "durak-card-game",
+  "version": "1.0.0",
+  "main": "game.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node game.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "commonjs"
+}
