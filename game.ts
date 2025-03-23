@@ -16,23 +16,16 @@ interface Card {
 const symbols: CardSymbol[] = ["6", "7", "8", "9", "10", "В", "Д", "К", "Т"];
 const levels: CardLevel[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const cardsPack: Card[] = [];
-for (let i = 0; i < 36; i++) {
-  const level: CardLevel = levels[i % 9];
-  const symbol: CardSymbol = symbols[i % 9];
-  const type =
-    i < 9
-      ? CardType.Club
-      : i < 18
-      ? CardType.Heart
-      : i < 27
-      ? CardType.Diamond
-      : CardType.Spade;
-  cardsPack.push({
-    level,
-    symbol,
-    type,
+
+Object.values(CardType).forEach((cardType: CardType) => {
+  symbols.forEach((symbol, index) => {
+    cardsPack.push({
+      level: (index + 1) as CardLevel,
+      symbol,
+      type: cardType,
+    });
   });
-}
+});
 
 function shuffleArray(array: Card[]): Card[] {
   const shuffledArray = [...array];
@@ -50,6 +43,7 @@ class Player {
   attacking: boolean = false;
   defending: boolean = false;
   protectionBroken: boolean = false;
+  turn: boolean = false;
 
   addCard(card: Card) {
     this.cards.push(card);
@@ -79,7 +73,7 @@ class Game {
     }
     let smallestLevel = 10;
     let firstAttacker: Player =
-      this.players[Math.floor(Math.random() * this.players.length - 1)];
+      this.players[Math.floor(Math.random() * this.players.length)];
     this.players.forEach((player) => {
       player.cards.forEach((card) => {
         if (card.type === this.kingCardType && smallestLevel > card.level) {
@@ -89,7 +83,7 @@ class Game {
       });
     });
     firstAttacker.attacking = true;
-    console.log(firstAttacker);
+    firstAttacker.turn = true;
     this.players[(firstAttacker.order + 1) % this.players.length].defending =
       true;
   }
@@ -101,8 +95,15 @@ class Game {
     if (this.isPossibleMove(card, player)) {
       player.removeCard(card);
       this.cardsOnTable.push(card);
+      if (player.defending) {
+        this.changePlayersTurn(this.players.find((p) => p.attacking));
+      } else {
+        if (!this.players.find((p) => p.defending).protectionBroken) {
+          this.changePlayersTurn(this.players.find((p) => p.defending));
+        }
+      }
     } else {
-      throw "Invalid move";
+      return "Invalid move";
     }
   }
   getFullHand(player: Player) {
@@ -112,10 +113,12 @@ class Game {
     }
   }
   isPossibleMove(card: Card, player: Player): boolean {
+    if (!player.turn) return false;
+    if (!player.cards.some((c) => c === card)) return false;
     if (player.attacking) {
       if (
         this.cardsOnTable.length === 0 ||
-        this.cardsOnTable.filter((c) => c.level === card.level).length
+        this.cardsOnTable.some((c) => c.level === card.level)
       ) {
         return true;
       }
@@ -135,15 +138,37 @@ class Game {
   bito(player: Player) {
     if (this.cardsOnTable.length > 0 && player.attacking) {
       const defendingPlayer = this.players.find((p) => p.defending);
+      const nextDefendingPlayer =
+        this.players[(defendingPlayer.order + 1) % this.players.length];
+      defendingPlayer.attacking = true;
+      defendingPlayer.defending = false;
+      player.attacking = false;
+      nextDefendingPlayer.defending = true;
       if (defendingPlayer.protectionBroken) {
         this.cardsOnTable.forEach((card) => defendingPlayer.addCard(card));
+        nextDefendingPlayer.attacking = true;
+        this.players[
+          (nextDefendingPlayer.order + 1) % this.players.length
+        ].defending = true;
+        this.changePlayersTurn(nextDefendingPlayer);
       }
       this.cardsOnTable = [];
       this.players.forEach((player) => this.getFullHand(player));
+    } else {
+      return "Invalid bito";
     }
-    throw "Invalid bito";
+  }
+  missAttack(player: Player) {
+    if (player.defending) {
+      player.protectionBroken = true;
+    }
+    return "Invalid Protection broken";
+  }
+  changePlayersTurn(player: Player) {
+    this.players.forEach((player) => (player.turn = false));
+    player.turn = true;
   }
 }
 
-// const game = new Game(["Shamshod", "Sherali"]);
-// console.log(game.players[0], game.players[1], game.kingCard);
+const game = new Game(["Shamshod", "Sherali"]);
+console.log(game);
